@@ -9,6 +9,7 @@ class VideoMediaPlayer {
     this.selected = {};
     this.videoDuration = 0;
     this.activeItem = {};
+    this.selections = []
   } 
   
   initializeCodec() {
@@ -58,6 +59,21 @@ class VideoMediaPlayer {
     this.activeItem = this.selected
   }
 
+  async currentFileResolution() {
+    const LOWEST_RESOLUTION = 144
+
+    const prepareUrl = {
+      url: this.manifestJSON.finalizar.url,
+      fileResolution: LOWEST_RESOLUTION,
+      fileResolutionTag: this.manifestJSON.fileResolutionTag,
+      hostTag: this.manifestJSON.hostTag,
+    }
+
+    const url = this.network.parseManifestURL(prepareUrl);
+
+    return this.network.getProperResolution(url);
+  }
+
   async nextChunk(data) {
     const key = data.toLowerCase();
     const selected = this.manifestJSON[key];
@@ -67,15 +83,30 @@ class VideoMediaPlayer {
       at: parseInt(this.videoElement.currentTime + selected.at)
     }
 
+    this.manageLag(selected);
+
     this.videoElement.play()
 
     await this.fileDownload(selected.url);
   }
 
+  manageLag(selected) {
+    if(!!~this.selections.indexOf(selected.url)) {
+      selected.at += 5;
+      return;
+    }
+
+    this.selections.push(selected.url);
+  }
+
   async fileDownload(url) {
+    const fileResolution = await this.currentFileResolution();
+
+    console.log(fileResolution);
+
     const prepareUrl = {
       url,
-      fileResolution: 360,
+      fileResolution: fileResolution,
       fileResolutionTag: this.manifestJSON.fileResolutionTag,
       hostTag: this.manifestJSON.hostTag
     }
